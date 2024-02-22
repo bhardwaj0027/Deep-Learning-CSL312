@@ -1,0 +1,56 @@
+import pandas as pd
+from sklearn.model_selection import train_test_split
+import numpy as np
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Dense
+from tensorflow.keras.optimizers import Adam
+
+# Load data from CSV file
+data = pd.read_csv("temp.csv")
+
+# Assuming the last column is the label, and rest are features
+X = data.iloc[:, :-1].values
+y = data.iloc[:, -1].values
+
+# Split data into training and validation sets
+X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=0.2, random_state=42)
+
+def create_model(neurons_1, neurons_2, optimizer):
+    model = Sequential()
+    model.add(Dense(neurons_1, input_dim=X_train.shape[1], activation='relu'))
+    model.add(Dense(neurons_2, activation='relu'))
+    model.add(Dense(1, activation='sigmoid'))
+
+    model.compile(loss='binary_crossentropy', optimizer=optimizer, metrics=['accuracy'])
+    return model
+
+# Define different configurations
+configurations = [
+    (64, 64, 'adam'),
+    (128, 128, 'adam'),
+    (64, 128, 'adam'),
+    (128, 64, 'adam'),
+]
+# Store results in a dictionary
+results = {}
+
+# Train models and store results
+for i, (neurons_1, neurons_2, optimizer) in enumerate(configurations):
+    model = create_model(neurons_1, neurons_2, optimizer)
+    history = model.fit(X_train, y_train, epochs=10, batch_size=32, validation_data=(X_val, y_val), verbose=0)
+    results[f'Model_{i+1}'] = {
+        'optimizer': optimizer,
+        'train_accuracy': history.history['accuracy'][-1],
+        'val_accuracy': history.history['val_accuracy'][-1],
+        'train_loss': history.history['loss'][-1],
+        'val_loss': history.history['val_loss'][-1],
+    }
+
+# Display results in a table
+results_df = pd.DataFrame.from_dict(results, orient='index')
+print(results_df)
+
+# Predict one value using the first model
+sample_input = X_val[0].reshape(1, -1)
+predicted_value = model.predict(sample_input)
+print(f"Predicted Value for Sample Input: {predicted_value}")
